@@ -1,0 +1,187 @@
+/*
+ * test.c
+ *
+ *  Created on: 2015-02-09
+ *      Author: Amanjit
+ */
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************/
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * ddr = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)(0x80000000+0x1000000);
+volatile unsigned int * FrameBuffer2 = (unsigned int *)(0x80000000+0x2000000);
+volatile unsigned int * FrameBuffer3 = (unsigned int *)(0x80000000+0x3000000);
+
+volatile unsigned int * FrBBaseAddr = (unsigned int *)0x44A00000;
+volatile unsigned int * DrBBaseAddr = (unsigned int *)0x44A00004;
+volatile unsigned int * DpBBaseAddr = (unsigned int *)0x44A00008;
+volatile unsigned int * Ready = 	  (unsigned int *)0x44A0000C;
+volatile unsigned int * Done = 		  (unsigned int *)0x44A00010;
+
+volatile unsigned int * TFT = (unsigned int *)0x44A10000;
+
+static XTft TftInstance;
+
+int main()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	// Change color back and forth to demonstrate double-buffering
+	int x,y;
+	for(x=0;x<640;x++){
+		for(y=0;y<480;y++){
+			*(FrameBuffer0+1024*y+x)=0x00fff000;
+		}
+	}
+	for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer2+1024*y+x)=0x00000000;
+			}
+		}
+	//XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer0);
+	*(TFT) = FrameBuffer3;
+
+	for(x=0;x<(1<<21);x++){
+		*(FrameBuffer1+x) = 0x00000000;
+	}
+	unsigned int tester;
+	while(1){
+		for(x=5;x<(640);x=x+200){
+			for(y=5;y<(480);y=y+200){
+				DrawBlob(FrameBuffer1,x,y,0xFF000FFF);
+				*(FrBBaseAddr) = FrameBuffer0;
+				*(DrBBaseAddr) = FrameBuffer1;
+				*(DpBBaseAddr) = FrameBuffer2;
+				tester = *FrBBaseAddr;
+				tester = *DrBBaseAddr;
+				tester = *DpBBaseAddr;
+				*(Ready) = 1;
+				*(Ready) = 0;
+				*(TFT) = FrameBuffer2;
+				//sleep(500);
+				y = y+10;
+				DrawBlob(FrameBuffer1,x,y,0xFF000FFF);
+				*(FrBBaseAddr) = FrameBuffer0;
+				*(DrBBaseAddr) = FrameBuffer1;
+				*(DpBBaseAddr) = FrameBuffer3;
+				tester = *FrBBaseAddr;
+				tester = *DrBBaseAddr;
+				tester = *DpBBaseAddr;
+				*(Ready) = 1;
+				*(Ready) = 0;
+				*(TFT) = FrameBuffer3;
+				//sleep(500);
+			}
+		}
+	}
+
+	return 0;
+}
+
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+void DrawBlob(unsigned int * addr, int x, int y, int colour){
+	int xOff,yOff;
+	for(xOff=-100;xOff<=100;xOff++){
+		for(yOff=-100;yOff<=100;yOff++){
+			*(addr+1024*(y+yOff)+(x+xOff)) = colour;
+		}
+	}
+}
+/*
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * ddr = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)0x80000000+0x200000;
+volatile unsigned int * FrameBuffer2 = (unsigned int *)0x80000000+0x400000;
+
+volatile unsigned int * FrBBaseAddr = (unsigned int *)0x44A00000;
+volatile unsigned int * DrBBaseAddr = (unsigned int *)0x44A00004;
+volatile unsigned int * DpBBaseAddr = (unsigned int *)0x44A00008;
+volatile unsigned int * Ready = 	  (unsigned int *)0x44A0000C;
+volatile unsigned int * Done = 		  (unsigned int *)0x44A00010;
+
+volatile unsigned int * TFT = (unsigned int *)0x44A10000;
+
+static XTft TftInstance;
+
+int main()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	// Change color back and forth to demonstrate double-buffering
+	int x,y;
+	for(x=0;x<640;x++){
+		for(y=0;y<480;y++){
+			*(FrameBuffer0+1024*y+x)=0x00fff000;
+		}
+	}
+	for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer2+1024*y+x)=0x00000000;
+			}
+		}
+	//XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer0);
+	*(TFT) = FrameBuffer2;
+
+	for(x=0;x<(1<<21);x++){
+		*(FrameBuffer1+x) = 0x00000000;
+	}
+
+	unsigned int tester;
+	while(1){
+		*(FrBBaseAddr) = FrameBuffer0;
+		*(DrBBaseAddr) = FrameBuffer1;
+		*(DpBBaseAddr) = FrameBuffer2;
+		*(Ready) = 1;
+		tester = *Ready;
+		tester = *Done;
+		*(Ready) = 0;
+		tester = *Ready;
+		sleep(5000000);
+		y = x;
+		for(;x<(y+(1<<16));x++){
+			*(FrameBuffer1+x) = 0xFF000fff;
+		}
+
+	}
+
+	return 0;
+}
+
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+ */

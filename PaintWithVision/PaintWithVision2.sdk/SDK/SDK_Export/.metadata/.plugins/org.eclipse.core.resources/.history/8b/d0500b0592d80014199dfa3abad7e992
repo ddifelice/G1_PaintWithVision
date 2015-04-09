@@ -1,0 +1,86 @@
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+#include "constants.h"
+/*
+int main()
+{
+	xil_printf("something");
+	int x;
+	x= 0;
+	x= x + 1;
+	//FillBuffer(0x80000000,0x00FFF000); //yellow
+	*(TFT) = 0x80000000;
+
+	*(VDMA_CR) = 0x1;
+	*(VDMA_AD) = 0x80000000;
+	*(VDMA_ST) = 4096;
+	*(VDMA_HS) = 4*DISPLAY_COLUMNS;
+	*(VDMA_VS) = DISPLAY_ROWS;
+
+	// Simple detection code
+	//FillBuffer(0x81000000,0x00000000); //yellow
+	//*(TFT) = 0x81000000;
+	while(1){
+		int i,j;
+		for(i=0;i<(128);i++){
+			for(j=0;j<(128);j++){
+				if(*(FrameBuffer+DISPLAY_ROWS*i+j)>0x00f00000){
+					*(FrameBuffer+DISPLAY_ROWS*i+j) = 0x00ffffff;
+				}
+			}
+		}
+		sleep(1000);
+	}
+
+	return 0;
+}*/
+
+int main()
+{
+	/************************************
+	 *        INITIALIZATIONS
+	 ************************************/
+	// Set up Camera VDMA
+	VDMAInit(FrameBuffer);
+
+	// Initialize Buffers
+	FillBuffer(DrawBuffer,0x0); //black
+	FillBuffer(DisplayBuffer,0x0); //black
+
+	// Turn on Display
+	Display(DisplayBuffer);
+
+	// Pixel Filter Threshold
+	unsigned int threshold = 0x00E0E0E0;
+
+	/************************************
+	 *           MAIN LOOP
+	 ************************************/
+	while(1){
+
+	// Capture a Frame
+	VDMAStart();
+	sleep(3300000);
+	VDMAStop();
+
+	// Run Compositor
+	CompositorRun(FrameBuffer, DrawBuffer, DisplayBuffer, threshold);
+
+	// LED Detection
+	unsigned int x = CompositorGetXPos();
+	unsigned int y = CompositorGetYPos();
+
+	// Draw on Drawing Buffer
+	int i;
+	for(i=0;i<(1<<14);i++)
+		*(DrawBuffer+i) = 0xFFFFFFFF;
+	//*(DrawBuffer + DISPLAY_COLUMNS*y + x) = 0xFFFFFFFF; //white
+
+
+	}
+}
+
+

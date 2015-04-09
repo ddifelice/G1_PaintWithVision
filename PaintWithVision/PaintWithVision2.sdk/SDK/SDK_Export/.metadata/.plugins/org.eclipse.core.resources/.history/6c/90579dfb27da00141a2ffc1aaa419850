@@ -1,0 +1,586 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include "platform.h"
+#include "xparameters.h"
+#include <Math.h>
+#include <time.h>
+
+#include "constants.h"
+
+int main()
+{
+	/************************************
+	 *        INITIALIZATIONS
+	 ************************************/
+	// Set up Camera VDMA
+	VDMAInit(FrameBuffer);
+
+	// Set up Compositor
+	unsigned int threshold = 0x0CCC0FFF;
+	CompositorInit(FrameBuffer, DrawBuffer, DisplayBuffer, threshold);
+
+	// Initialize Buffers
+	FillBuffer(FrameBuffer,0x00ff0000); //black
+	FillBuffer(DrawBuffer,0x0); //black
+	FillBuffer(DisplayBuffer,0x0); //black
+
+	// Turn on Display
+	Display(DisplayBuffer);
+
+	/************************************
+	 *           MAIN LOOP
+	 ************************************/
+	while(1){
+
+	// Capture a Frame
+	// -We are guaranteed a single frame because Microblaze is faster than
+	//  30Hz, so as long as we don't sleep to early, we are guaranteed
+	//  VDMA will write a single frame and stop, decreasing the sleep
+	//  value more will not make a difference, may cause no frame to be written
+	// -If there is a compositor/VMDA race condition, use VDMAStopAndWait()
+	//VDMAStart();
+	//sleep(500000);
+	//VDMAStop();
+
+
+	// Run Compositor
+	// -Super slow, need to accelerate
+	CompositorRun();
+
+	// LED Detection & Draw on Drawing Buffer
+	// -Currently this appears to give very large unchanging values
+	//unsigned int x = CompositorGetXPos();
+	//unsigned int y = CompositorGetYPos();
+
+	// find the white blobs
+	Vector blobList;
+	vector_init(&blobList);
+	// search region: 80 pix box at the center
+	OnePass(&blobList, (char*) FrameBuffer, 640/2, 480/2, 40);
+
+
+	// draw the found blobs
+	int i, avg_x, avg_y, radius;
+	struct Blob blob;
+	for (i = 0; i < blobList.size; i ++){
+
+		blob = vector_get(&blobList, i);
+		avg_x = blob.total_x/blob.count;
+		avg_y = blob.total_y/blob.count;
+		radius = sqrt(blob.count)/2;
+
+		DrawSqure(avg_x, avg_y, radius, 2, (char*) DrawBuffer, 15, 0, 0);
+	}
+
+
+	}
+}
+
+
+
+
+
+int getAvgX(struct Blob * myblob) {
+
+		return (myblob->total_x)/(myblob->count);
+
+	}
+	int getAvgY(struct Blob * myblob){
+
+		return (myblob->total_y)/(myblob->count);
+
+	}
+
+	bool isWhitePixel(int i, int j, char * image, int threshold)
+	        {
+			/*unsigned int b = image[_B(i, j)];
+			unsigned int g = image[_G(i, j)];
+			unsigned int r = image[_R(i, j)];*/
+					unsigned char b = image[_B(i, j)];
+					unsigned char g = image[_G(i, j)];
+					unsigned char r = image[_R(i, j)];
+					unsigned int r_ = r;
+					unsigned int g_ = g;
+					unsigned int b_ = b;
+
+	            //return ((image[_B(i, j)] > threshold) &&
+	            //            (image[_G(i, j)] > threshold) &&
+	            //            (image[_R(i, j)] > threshold));
+			return ( (b > threshold) &&
+				                        (g > threshold) &&
+				                        (r > threshold) );
+			//return ( (*(image + _B(i, j)) > threshold) &&
+			//                        (*(image + _G(i, j)) > threshold) &&
+			//                        (*(image + _R(i, j)) > threshold) );
+	        }
+
+		// alanwu: x, y and radius specifies the search region (square)
+        void OnePass(Vector * blobList, char *image, int x, int y, int radius)
+        {
+        	xil_printf("start OnePass\n");
+            // label for each pixel
+           // unsigned short label [DISPLAY_WIDTH * DISPLAY_HEIGHT];
+        	unsigned short *label  = ddr_label;
+            // keep at max 1024 labels
+            int MAX_LABEL = 1024;
+
+            int equal_label_lookup [MAX_LABEL];
+            int cur_label = 1;
+            // threshold to mark a white
+            int threshold = 11;
+
+            int n = 0, i = 0, j = 0;
+            int i_start, i_end, j_start, j_end;
+            //for (n = 0; n < DISPLAY_WIDTH * DISPLAY_HEIGHT; n++)
+            for (n = 0; n < DISPLAY_COLUMNS * DISPLAY_ROWS; n++)
+            {
+                label[n] = 0;
+            }
+
+            for (n = 0; n < MAX_LABEL; n++)
+            {
+                equal_label_lookup[n] = 0;
+            }
+
+            i_start = clip_width(x - radius);
+            i_end = clip_width(x + radius);
+            j_start = clip_height(y - radius);
+            j_end = clip_height(y + radius);
+
+            // scan the whole frame
+            for (j = j_start; j < j_end; j++)
+            {
+                for (i = i_start; i < i_end; i++)
+                {
+                    // label white pixels
+                    if (isWhitePixel(i, j, image, threshold))
+                    {
+                    	//xil_printf("pixel: %d, %d, %d\n",image[_B(i, j)] >> 2, image[_G(i, j)] >> 2, image[_R(i, j)] >> 2);
+
+                        // ignore corners
+                        int smallest_lable = cur_label;
+                        if ((i > 0) && (j > 0) && (i < DISPLAY_COLUMNS) && (j < DISPLAY_ROWS))
+                        {
+                            // only look at west and north pixels, since these labels are known
+                            int west_label = label[label_index(i - 1, j)];
+                            int north_label = label[label_index(i, j - 1)];
+
+                            // case 1: both west and north labels are present
+                            // use west label, and mark west and north label to be equivalent
+                            if ((west_label != 0) && (north_label != 0))
+                            {
+                                label[label_index(i, j)] = west_label;
+                                struct Blob getBlob = vector_get(blobList, west_label - 1);
+                                getBlob.count += 1;
+                                getBlob.total_x += i;
+                                getBlob.total_y += j;
+                                vector_set(blobList, west_label - 1, getBlob);
+
+                                if ((equal_label_lookup[west_label] == 0) && (west_label > north_label))
+                                {
+                                    equal_label_lookup[west_label] = north_label;
+                                }
+                            }
+
+                            // case 2: only west or north label is present
+                            // set current pixel label to that label
+                            else if ((west_label == 0) && (north_label != 0))
+                            {
+                                label[label_index(i, j)] = north_label;
+                                struct Blob getBlob = vector_get(blobList, north_label - 1);
+                                getBlob.count += 1;
+                                getBlob.total_x += i;
+                                getBlob.total_y += j;
+                                vector_set(blobList, north_label - 1, getBlob);
+                            }
+                            else if ((west_label != 0) && (north_label == 0))
+                            {
+                                label[label_index(i, j)] = west_label;
+                                struct Blob getBlob = vector_get(blobList, west_label - 1);
+                                getBlob.count += 1;
+                                getBlob.total_x += i;
+                                getBlob.total_y += j;
+                                vector_set(blobList, west_label - 1, getBlob);
+                            }
+                            // case 3: add a new label
+                            // also create a new blob corresponding to the new label
+                            else
+                            {
+                                label[label_index(i, j)] = cur_label;
+
+                                struct Blob newBlob;
+                                newBlob.count = 1;
+                                newBlob.total_x = i;
+                                newBlob.total_y = j;
+
+                                vector_append(blobList, newBlob);
+                                cur_label++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            xil_printf("for loop 2\n");
+            // reduce equal labels
+            // scan the equal label lookup table once and reduce the blobs
+            for (i = 0; i < MAX_LABEL; i++ )
+            {
+                int thisLabel = i;
+                int nextLabel = equal_label_lookup[i];
+                if (nextLabel != 0)
+                {
+                    while (true)
+                    {
+                        thisLabel = nextLabel;
+                        nextLabel = equal_label_lookup[thisLabel];
+                        if (nextLabel == 0)
+                        {
+                            // find the root
+                            equal_label_lookup[i] = thisLabel;
+
+                            // add to the root blob
+                            struct Blob rootBlob;
+                            struct Blob currentBlob;
+
+                            rootBlob = vector_get(blobList, thisLabel - 1);
+                            currentBlob = vector_get(blobList, i - 1);
+
+                            rootBlob.count += currentBlob.count;
+                            rootBlob.total_x += currentBlob.total_x;
+                            rootBlob.total_y += currentBlob.total_y;
+                            vector_set(blobList, thisLabel - 1, rootBlob);
+
+                            // clear the chil blob count
+
+                            currentBlob.count = 0;
+                            vector_set(blobList, i - 1, currentBlob);
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            xil_printf("end one pass\n");
+            /*
+            // only take the blobs that has valid counts
+            List<Blob> final_blob_list = new List<Blob>();
+            foreach (Blob blob in blob_list)
+            {
+                if (blob.count > 1)
+                {
+                    final_blob_list.Add(blob);
+                }
+            }*/
+
+        }
+
+        int _B(int i, int j)
+        {
+            //return (j * DISPLAY_WIDTH * bpp) + i * bpp + 3;
+        	return (i * _bpp) + j * 1024 * _bpp + 0;
+        }
+        int _G(int i, int j)
+        {
+        	//return (j * DISPLAY_WIDTH * bpp) + i * bpp + 2;
+            return (i * _bpp) + j * 1024 * _bpp + 1;
+        }
+        int _R(int i, int j)
+        {
+        	//return (j * DISPLAY_WIDTH * bpp) + i * bpp + 1;
+            return (i * _bpp) + j * 1024 * _bpp + 2;
+        }
+        int label_index(int i, int j)
+        {
+        	// return i + j * DISPLAY_WIDTH;
+            return i + j * DISPLAY_COLUMNS;
+        }
+
+        /*
+         * Size of image will be bpp * DISPLAY_WIDTH * DISPLAY HEIGHT
+         */
+
+
+
+	 void ProcessFrame( char *image) {
+		 xil_printf("start Process. DDR at %d\n", image);
+            char tar_color_r = 0x0;
+            char tar_color_g = 0x0;
+            char tar_color_b = 0x07;
+
+            // get all the blobs in the picture that are bright
+            Vector blobList;
+            vector_init(&blobList);
+            OnePass(&blobList, image, 640, 480, 50);
+
+            int cur_distance = DISPLAY_ROWS * DISPLAY_COLUMNS;
+
+            // find the blob that's closest to the tracked color center (blue in this case)
+            int i = 0;
+            struct Blob finalBlob;
+            xil_printf("start for loop");
+            for (i = 0; i < blobList.size; i ++){
+            	xil_printf("i = %d, size = %d\n", i, blobList.size);
+            	struct Blob blob = vector_get(&blobList, i);
+
+                //int temp_distance = Distance(getAvgX(&blob), getAvgY(&blob),*(X_pos), *(Y_pos));
+                /*if (temp_distance < cur_distance)
+                {
+                    cur_distance = temp_distance;
+                    finalBlob = blob;
+                }*/
+
+            }
+
+        }
+
+	 // vector.c
+
+
+	 void vector_init(Vector *vector) {
+	   // initialize size and capacity
+	   vector->size = 0;
+	   vector->capacity = VECTOR_INITIAL_CAPACITY;
+
+	   // allocate memory for vector->data
+	   vector->data = malloc(sizeof(struct Blob) * vector->capacity);
+	 }
+
+	 void vector_append(Vector *vector, struct Blob myblob) {
+	   // make sure there's room to expand into
+	   vector_double_capacity_if_full(vector);
+
+	   // append the value and increment vector->size
+	   vector->data[vector->size++] = myblob;
+	 }
+
+	 struct Blob vector_get(Vector *vector, int index) {
+	   if (index >= vector->size || index < 0) {
+	     printf("Index %d out of bounds for vector of size %d\n", index, vector->size);
+	     exit(1);
+	   }
+	   return vector->data[index];
+	 }
+
+	 void vector_set(Vector *vector, int index, struct Blob myBlob) {
+	   // zero fill the vector up to the desired index
+	   /*while (index >= vector->size) {
+	     vector_append(vector, myBlob);
+	   }*/
+
+	   // set the value at the desired index
+	   vector->data[index] = myBlob;
+	 }
+
+	 void vector_double_capacity_if_full(Vector *vector) {
+	   if (vector->size >= vector->capacity) {
+	     // double vector->capacity and resize the allocated memory accordingly
+	     vector->capacity *= 2;
+	     vector->data = realloc(vector->data, sizeof(struct Blob) * vector->capacity);
+	   }
+	 }
+
+	 void vector_free(Vector *vector) {
+	   free(vector->data);
+	 }
+
+	 int Distance(int x1, int y1, int x2, int y2)
+     {
+		 if ((x2 != -1) || (y2 != -1)) {
+			 return (int) sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+		 } else
+			 return 0;
+
+     }
+
+
+
+
+	    // alanwu: Draw functions
+	    void draw_line(char * image, int r, int g, int b, int x1, int y1, int x2, int y2)
+	    {
+
+	    	// Distance start and end point
+				int dx = x2 - x1;
+				int dy = y2 - y1;
+	    	// Determine sign for direction x
+				int incx = 0;
+				if (dx < 0)
+				{
+					dx = -dx;
+					incx = -1;
+				}
+				else if (dx > 0)
+				{
+					incx = 1;
+				}
+
+				// Determine sign for direction y
+				int incy = 0;
+				if (dy < 0)
+				{
+					dy = -dy;
+					incy = -1;
+				}
+				else if (dy > 0)
+				{
+					incy = 1;
+				}
+
+			// Which gradient is larger
+				int pdx, pdy, odx, ody, es, el;
+				if (dx > dy)
+				{
+					pdx = incx;
+					pdy = 0;
+					odx = incx;
+					ody = incy;
+					es = dy;
+					el = dx;
+				}
+				else
+				{
+					pdx = 0;
+					pdy = incy;
+					odx = incx;
+					ody = incy;
+					es = dx;
+					el = dy;
+				}
+			// Init start
+				int x = x1;
+				int y = y1;
+				int error = el >> 1;
+
+				if (x < 0) x = 0;
+				if (x >= _width) x = _width - 1;
+				if (y < 0) y = 0;
+				if (y >= _height) y = _height - 1;
+
+			// Walk the line!
+				int i = 0;
+				for (i = 0; i < el; i++)
+				{
+					// Update error term
+					error -= es;
+
+					// Decide which coord to use
+					if (error < 0)
+					{
+						error += el;
+						x += odx;
+						y += ody;
+					}
+					else
+					{
+						x += pdx;
+						y += pdy;
+					}
+
+					// Set pixel
+					if (x < 0) x = 0;
+					if (x >= _width) x = _width - 1;
+					if (y < 0) y = 0;
+					if (y >= _height) y = _height - 1;
+
+					set_color(image, x, y, r, g, b);
+					//texture.SetPixel(x, y, color);
+					//pixel = pixelBuffer + ((y * m_videoWidth + x) * m_videoBPP);
+					//*((int*)pixel) = color;
+				}
+
+	    }
+
+	    // set the color of 1 pixel
+	    void set_color (char * image, int x, int y, int r, int g, int b)
+	    {
+
+
+	    	char * B = image + x * _bpp + y * _line_byte_width;
+	    	char * G = image + x * _bpp + y * _line_byte_width + 1;
+	    	char * R = image + x * _bpp + y * _line_byte_width + 2;
+	    	char * P = image + x * _bpp + y * _line_byte_width + 3;
+
+	    	// set padding to display
+	    	*P = 0x80; // b1000 0000
+	    	// setting colorsF
+	    	*G = g << 2;
+	    	*R = r << 2;
+	    	*B = b << 2;
+
+	    	/* *(P+320*_bpp) = 0x80;
+	    	*(G+320*_bpp) = g << 2;
+	    	*(R+320*_bpp) = r << 2;
+	    	*(B+320*_bpp) = b << 2;*/
+	    }
+
+	        void DrawSqure(int center_x, int center_y, int radius, int thickness, char * image, int R, int G, int B)
+	        {
+
+	            FillColor(center_x - radius, center_y - radius, center_x + radius, center_y - radius + thickness, image, R, G, B);
+	            FillColor(center_x + radius, center_y - radius, center_x + radius + thickness, center_y + radius, image, R, G, B);
+	            FillColor(center_x - radius, center_y - radius, center_x - radius + thickness, center_y + radius, image, R, G, B);
+	            FillColor(center_x - radius, center_y + radius, center_x + radius, center_y + radius + thickness, image, R, G, B);
+	        }
+
+	        // use pixel position
+			void FillColor(int x1, int y1, int x2, int y2, char * image, int R, int G, int B)
+	        {
+	            x1 = clip_width(x1);
+	            x2 = clip_width(x2);
+
+	            y1 = clip_height(y1);
+	            y2 = clip_height(y2);
+
+	            int i_start = x1;
+	            int i_end = x2;
+
+	            int j_start = y1;
+	            int j_end = y2;
+
+	            int i = 0, j = 0;
+	            for (i = i_start; i < i_end; i ++)
+	            {
+	                for (j = j_start; j < j_end; j ++)
+	                {
+	                	set_color(image, i, j, R, G, B);
+	                    //image[offset + (j * pix_width * bpp) + i * bpp] = (byte)B;
+	                    //image[offset + (j * pix_width * bpp) + i * bpp + 1] = (byte)G;
+	                    //image[offset + (j * pix_width * bpp) + i * bpp + 2] = (byte)R;
+	                }
+	            }
+	        }
+
+	        int clip_width(int val)
+	        {
+	            if (val < 0)
+	            {
+	                return 0;
+	            }
+	            else if (val > _width)
+	            {
+	                return _width;
+	            }
+	            else
+	            {
+	                return val;
+	            }
+	        }
+
+	        int clip_height(int val)
+	        {
+	            if (val < 0)
+	            {
+	                return 0;
+	            }
+	            else if (val > _height)
+	            {
+	                return _height;
+	            }
+	            else
+	            {
+	                return val;
+	            }
+	        }

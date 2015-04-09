@@ -1,0 +1,51 @@
+#-----------------------------------------------------------
+# Vivado v2014.1 (64-bit)
+# SW Build 881834 on Fri Apr  4 14:15:54 MDT 2014
+# IP Build 877625 on Fri Mar 28 16:29:15 MDT 2014
+# Start of session at: Fri Apr 03 16:37:01 2015
+# Process ID: 7620
+# Log file: C:/Users/Daniel/Documents/Uoft_hw/ECE532/LATEST/PaintWithVisionDaniel_Beta/vivado.log
+# Journal file: C:/Users/Daniel/Documents/Uoft_hw/ECE532/LATEST/PaintWithVisionDaniel_Beta\vivado.jou
+#-----------------------------------------------------------
+start_gui
+open_project {C:\Users\Daniel\Documents\Uoft_hw\ECE532\LATEST\PaintWithVisionDaniel_Beta\PaintWithVision2.xpr}
+open_bd_design {C:/Users/Daniel/Documents/Uoft_hw/ECE532/LATEST/PaintWithVisionDaniel_Beta/PaintWithVision2.srcs/sources_1/bd/design_1/design_1.bd}
+reset_run synth_1
+launch_runs synth_1
+wait_on_run synth_1
+reset_run synth_1
+delete_bd_objs [get_bd_intf_nets microblaze_0_axi_periph_M06_AXI] [get_bd_nets axi_vdma_2_m_axis_mm2s_tdata] [get_bd_nets FastCompositor_0_B_ready] [get_bd_intf_nets VDMA_StreamB_M_AXI_MM2S] [get_bd_nets axi_vdma_2_m_axis_mm2s_tvalid] [get_bd_cells VDMA_StreamB]
+delete_bd_objs [get_bd_nets axi_vdma_1_m_axis_mm2s_tvalid] [get_bd_nets axi_vdma_1_m_axis_mm2s_tdata] [get_bd_nets FastCompositor_0_A_ready] [get_bd_intf_nets microblaze_0_axi_periph_M04_AXI] [get_bd_intf_nets VDMA_StreamA_M_AXI_MM2S] [get_bd_cells VDMA_StreamA]
+delete_bd_objs [get_bd_nets FastCompositor_0_C_data] [get_bd_nets FastCompositor_0_tkeep] [get_bd_nets FastCompositor_0_tlast] [get_bd_nets axi_vdma_3_s_axis_s2mm_tready] [get_bd_nets FastCompositor_0_C_valid] [get_bd_cells FastCompositor_0]
+delete_bd_objs [get_bd_intf_nets microblaze_0_axi_periph_M08_AXI] [get_bd_intf_nets VDMA_StreamC_M_AXI_S2MM] [get_bd_cells VDMA_StreamC]
+generate_target all [get_files  C:/Users/Daniel/Documents/Uoft_hw/ECE532/LATEST/PaintWithVisionDaniel_Beta/PaintWithVision2.srcs/sources_1/bd/design_1/design_1.bd]
+assign_bd_address [get_bd_addr_segs axi_uartlite_0/S_AXI/Reg] -target_address_space /microblaze_0/Data
+assign_bd_address [get_bd_addr_segs axi_uartlite_0/S_AXI/Reg] -target_address_space /microblaze_0/Data
+assign_bd_address [get_bd_addr_segs mig_7series_0/memmap/memaddr] -target_address_space /microblaze_0/Data
+assign_bd_address [get_bd_addr_segs axi_tft_0/S_AXI_MM/Reg] -target_address_space /microblaze_0/Data
+assign_bd_address [get_bd_addr_segs {axi_intc_0/s_axi/Reg }]
+undo
+assign_bd_address
+assign_bd_address
+assign_bd_address [get_bd_addr_segs compositor_0/S_AXI/S_AXI_reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs compositor_0/S_AXI/S_AXI_reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs compositor_0/S_AXI/S_AXI_reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs axi_uartlite_0/S_AXI/Reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs axi_tft_0/S_AXI_MM/Reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs axi_intc_0/s_axi/Reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs axi_vdma_0/S_AXI_LITE/Reg] -target_address_space /axi_tft_0/Video_data
+assign_bd_address [get_bd_addr_segs axi_uartlite_0/S_AXI/Reg] -target_address_space /axi_vdma_0/Data_S2MM
+assign_bd_address [get_bd_addr_segs axi_tft_0/S_AXI_MM/Reg] -target_address_space /axi_vdma_0/Data_S2MM
+assign_bd_address [get_bd_addr_segs axi_intc_0/s_axi/Reg] -target_address_space /axi_vdma_0/Data_S2MM
+assign_bd_address [get_bd_addr_segs axi_vdma_0/S_AXI_LITE/Reg] -target_address_space /axi_vdma_0/Data_S2MM
+assign_bd_address [get_bd_addr_segs compositor_0/S_AXI/S_AXI_reg] -target_address_space /axi_vdma_0/Data_S2MM
+generate_target all [get_files  C:/Users/Daniel/Documents/Uoft_hw/ECE532/LATEST/PaintWithVisionDaniel_Beta/PaintWithVision2.srcs/sources_1/bd/design_1/design_1.bd]
+launch_runs synth_1
+wait_on_run synth_1
+reset_run synth_1
+launch_runs synth_1
+wait_on_run synth_1
+launch_runs impl_1
+wait_on_run impl_1
+launch_runs impl_1 -to_step write_bitstream
+wait_on_run impl_1

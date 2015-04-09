@@ -1,0 +1,93 @@
+/*
+ * test.c
+ *
+ *  Created on: 2015-02-09
+ *      Author: Amanjit
+ */
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************/
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * ddr = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer0 = ddr;
+volatile unsigned int * FrameBuffer1 = ddr+0x20000;
+
+static XTft TftInstance;
+
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+int main()
+{
+	init_platform();
+
+	// Set base address to ddr
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+	XTft_SetFrameBaseAddr(&TftInstance, (u32)ddr);
+
+	while(1){
+		int x,y;
+
+		sleep(500000);
+		for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(ddr+1024*y+x)=0x00fff000;
+			}
+		}
+		XTft_SetFrameBaseAddr(&TftInstance, (u32)ddr);
+		sleep(500000);
+		for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(ddr+1024*y+x+(1<<21))=0x00000fff;
+			}
+		}
+		XTft_SetFrameBaseAddr(&TftInstance, (u32)ddr+(u32)(1<<21));
+	}
+		/*
+		int direction = 0;
+		int y = 0;
+
+		int new_value = 0x000000ff;
+		int counter = 0;
+		while (1){
+			if (counter > 500000) {
+				if (y < 0){
+					direction = 0;
+					y = 0;
+				} else if (y > 480) {
+					direction = 1;
+					y = 480;
+				} else if (direction == 0){
+					y++;
+				} else {
+					y--;
+				}
+
+				for(x=0;x<640;x++){
+					if (direction == 0){
+						*(ddr+1024*(y-1)+x)=value;
+					} else {
+						*(ddr+1024*(y+1)+x)=value;
+					}
+					*(ddr+1024*y+x)=new_value;
+				}
+				counter = 0;
+			}
+			else {
+				counter ++;
+			}
+		}
+		*/
+
+
+	return 0;
+}

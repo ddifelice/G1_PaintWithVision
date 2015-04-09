@@ -1,0 +1,61 @@
+/*
+ * test.c
+ *
+ *  Created on: 2015-02-09
+ *      Author: Amanjit
+ */
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************/
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * ddr = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)0x80000000+0x200000;
+
+static XTft TftInstance;
+
+int main()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	// Change color back and forth to demonstrate double-buffering
+	while(1){
+		int x,y;
+
+		// Wait a bit, then fill buffer 0, then set TFT address to it when done
+		sleep(5000000);
+		for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer0+1024*y+x)=0xfffff000;
+			}
+		}
+		XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer0);
+
+		// Wait a but, then fill buffer 1, then set TFT address to it when done
+		sleep(5000000);
+		for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer1+1024*y+x)=0xff000fff;
+			}
+		}
+		XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer1);
+	}
+
+	return 0;
+}
+
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}

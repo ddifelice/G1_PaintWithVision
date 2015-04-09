@@ -1,0 +1,3 @@
+Interrupt handler is in xintc_intr.c
+Test it.
+

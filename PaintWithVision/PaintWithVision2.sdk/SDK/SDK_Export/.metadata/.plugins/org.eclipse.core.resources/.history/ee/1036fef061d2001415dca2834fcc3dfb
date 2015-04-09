@@ -1,0 +1,439 @@
+/*
+ * test.c
+ *
+ *  Created on: 2015-02-09
+ *      Author: Amanjit
+ */
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************/
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+// These are the frame buffers which will hold the camera image (double-buffered)
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)(0x80000000+0x800000);
+// These are the drawing buffers which will be used to draw the image
+volatile unsigned int * FrameBuffer2 = (unsigned int *)(0x80000000+0x1000000);
+volatile unsigned int * FrameBuffer3 = (unsigned int *)(0x80000000+0x1800000);
+// These are the composed display buffers which the TFT controller points to
+volatile unsigned int * FrameBuffer4 = (unsigned int *)(0x80000000+0x2000000);
+volatile unsigned int * FrameBuffer5 = (unsigned int *)(0x80000000+0x2800000);
+
+// COMPOSITOR REGISTERS
+// Write the Frame Buffer base address to this location
+volatile unsigned int * FrBBaseAddr = (unsigned int *)0x44A00000;
+// Write the Draw Buffer base address to this location
+volatile unsigned int * DrBBaseAddr = (unsigned int *)0x44A00004;
+// Write the Display Buffer base address to this location
+volatile unsigned int * DpBBaseAddr = (unsigned int *)0x44A00008;
+// This register must be pulsed to start the composition process (pulse high)
+volatile unsigned int * Ready = 	  (unsigned int *)0x44A0000C;
+// Poll bit0 of this register to tell when compositon is complete (wait for 1)
+volatile unsigned int * Done = 		  (unsigned int *)0x44A00010;
+
+// TFT Address Register
+// Amanjit - for some reason the old way of calling a function didn't work
+//           so I just set this register directly. I think the TFT thinks it's
+//           at address 0x44A00000, but that's the compositor's address.
+volatile unsigned int * TFT = (unsigned int *)0x44A10000;
+static XTft TftInstance;
+
+volatile unsigned int * Camera = (unsigned int *)0x44A00000;
+
+int main()
+{
+	/*FillBuffer(0x80000000,0x00FFF000); //yellow*/
+	(TFT) = 0x80000000;
+
+	*(Camera + 0x30) = 0x1;
+	*(Camera + 0xAC) = 0x80000000;
+	*(Camera + 0xA8) = 4096;
+	*(Camera + 0xA4) = 2560;
+	*(Camera + 0xA0) = 480;
+
+	int foo = *(Camera + 0x34);
+	foo = *(Camera + 0x30);
+	foo = *(Camera + 0xAC);
+	foo = *(Camera + 0xA8);
+	foo = *(Camera + 0xA4);
+	foo = *(Camera + 0xA0);
+
+	return 0;
+	/*
+	*TFT = FrameBuffer0;
+	*Camera = FrameBuffer0;
+	*(Camera+0x8) = 1;
+	*(Camera+0x8) = 0;
+
+	while(1){
+		*(Camera+0x8) = 1;
+		*(Camera+0x8) = 0;
+
+	}
+
+	return 0;
+	/*
+	init_platform();
+	//XTft_Config *tft = XTft_LookupConfig(0);
+	//int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+	return 0;
+	*Camera = 0x86000000;
+	//int val = *FrameBuffer0;
+	int i;
+	for(i=0;i<(1<<21); i++)
+		*(FrameBuffer0+i)=0x00fff000;
+	*TFT = FrameBuffer0;
+	*Camera = FrameBuffer0;
+	//Display(FrameBuffer0);
+	//FillBuffer(FrameBuffer0,0x00FFF000);
+	/**Camera = FrameBuffer0;
+	while(1){
+		*(Camera+0x1) = 1;
+		*(Camera+0x1) = 0;
+		int val = *Camera;
+		val = *(Camera+0x1);
+		val = *(FrameBuffer0+20);
+		val = 10;
+		//xil_printf("%d\n",*FrameBuffer0);
+	}
+	//sleep(10000000);
+	*Camera = 0x86000000;
+	int val = *FrameBuffer0;
+	val = *FrameBuffer0;
+	val = *FrameBuffer0;
+	val = *FrameBuffer0;
+
+	return 0;*/
+}
+/*
+int mainOLD()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	// Initialize Buffers
+	FillBuffer(FrameBuffer0,0x00FFF000); // Fill camera buffers with yellow
+	FillBuffer(FrameBuffer1,0x00FFF000);
+	FillBuffer(FrameBuffer2,0x00000000); // Clear drawing buffers
+	FillBuffer(FrameBuffer3,0x00000000);
+	FillBuffer(FrameBuffer4,0x00000000); // Clear display buffers
+	FillBuffer(FrameBuffer5,0x00000000);
+
+	// We will write a line to one draw buffer, compose and display, then
+	// write the same to the other draw buffer, compose and display
+	// and keep doing this with a delay in between
+	Display(FrameBuffer4);
+	int x = 0;
+	while(1){
+		// The compositor looks at the MSB to pick whether it should use the
+		// draw buffer value or the frame buffer, so bit 31 must be set, followed
+		// by whatever colour you want to draw with (here it's red)
+		PushLine(FrameBuffer3,x,0xFFFF0000);
+		RunComposition(FrameBuffer1,FrameBuffer3,FrameBuffer5);
+		Display(FrameBuffer5);
+		PushLine(FrameBuffer2,x,0xFFFF0000);
+		RunComposition(FrameBuffer0,FrameBuffer2,FrameBuffer4);
+		Display(FrameBuffer4);
+		x++;
+		sleep(10000000);
+	}
+	return 0;
+}*/
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+// Fill entire 2MB of buffer with colour
+void FillBuffer(unsigned int * buffer, int colour){
+	int i;
+	for(i=0;i<(1<<21); i++)
+		*(buffer+i)=colour;
+}
+// Point TFT to a buffer
+void Display(unsigned int *buffer){
+	*(TFT)=buffer;
+}
+// Paint the specified horizontal line with colour
+void PushLine(unsigned int *buffer, int line, int colour){
+	int i;
+	for(i=0;i<1024;i++)
+		*(buffer+i+line*1024)=colour;
+}
+// Signal the compositor to start and wait for it to finish
+void RunComposition(unsigned int *Fr, unsigned int *Dr, unsigned int *Dp){
+	// Set the frame, drawing, display buffers
+	*FrBBaseAddr = Fr;
+	*DrBBaseAddr = Dr;
+	*DpBBaseAddr = Dp;
+	// go low and then high to generate positive edge
+	// DO NOT exchange the order of these two
+	*Ready = 0;
+	*Ready = 1;
+	// Wait for finish, otherwise we will see jitter on screen
+	// if it is still writing
+	while(*Done==0);
+}
+
+
+
+
+
+/*
+ *   OLD RANDOM STUFF DOWN HERE
+ *
+ *
+ *
+void DrawBlob(unsigned int * addr, int x, int y, int colour){
+	int xOff,yOff;
+	for(xOff=-100;xOff<=100;xOff++){
+		for(yOff=-100;yOff<=100;yOff++){
+			*(addr+1024*(y+yOff)+(x+xOff)) = colour;
+		}
+	}
+}
+/*
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * ddr = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)0x80000000+0x200000;
+volatile unsigned int * FrameBuffer2 = (unsigned int *)0x80000000+0x400000;
+
+volatile unsigned int * FrBBaseAddr = (unsigned int *)0x44A00000;
+volatile unsigned int * DrBBaseAddr = (unsigned int *)0x44A00004;
+volatile unsigned int * DpBBaseAddr = (unsigned int *)0x44A00008;
+volatile unsigned int * Ready = 	  (unsigned int *)0x44A0000C;
+volatile unsigned int * Done = 		  (unsigned int *)0x44A00010;
+
+volatile unsigned int * TFT = (unsigned int *)0x44A10000;
+
+static XTft TftInstance;
+
+int main()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	// Change color back and forth to demonstrate double-buffering
+	int x,y;
+	for(x=0;x<640;x++){
+		for(y=0;y<480;y++){
+			*(FrameBuffer0+1024*y+x)=0x00fff000;
+		}
+	}
+	for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer2+1024*y+x)=0x00000000;
+			}
+		}
+	//XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer0);
+	*(TFT) = FrameBuffer2;
+
+	for(x=0;x<(1<<21);x++){
+		*(FrameBuffer1+x) = 0x00000000;
+	}
+
+	unsigned int tester;
+	while(1){
+		*(FrBBaseAddr) = FrameBuffer0;
+		*(DrBBaseAddr) = FrameBuffer1;
+		*(DpBBaseAddr) = FrameBuffer2;
+		*(Ready) = 1;
+		tester = *Ready;
+		tester = *Done;
+		*(Ready) = 0;
+		tester = *Ready;
+		sleep(5000000);
+		y = x;
+		for(;x<(y+(1<<16));x++){
+			*(FrameBuffer1+x) = 0xFF000fff;
+		}
+
+	}
+
+	return 0;
+}
+
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+ */
+
+
+/*
+	// Change color back and forth to demonstrate double-buffering
+	int x,y;
+	for(x=0;x<640;x++){
+		for(y=0;y<480;y++){
+			*(FrameBuffer0+1024*y+x)=0x00fff000;
+			*(FrameBuffer5+1024*y+x)=0x00fff000;
+		}
+	}
+	for(x=0;x<640;x++){
+			for(y=0;y<480;y++){
+				*(FrameBuffer2+1024*y+x)=0x00000000;
+			}
+		}
+	//XTft_SetFrameBaseAddr(&TftInstance, (u32)FrameBuffer0);
+	*(TFT) = FrameBuffer3;
+
+	for(x=0;x<(1<<21);x++){
+		*(FrameBuffer1+x) = 0x00000000;
+		*(FrameBuffer4+x)=0x00000000;
+	}
+	unsigned int tester;
+	while(1){
+		for(x=0;x<480;x++){
+			for(y=0;y<1024;y++){
+				*(FrameBuffer1+y+1024*x) = 0xFF00000F;
+
+			}
+			*(FrBBaseAddr) = FrameBuffer0;
+			*(DrBBaseAddr) = FrameBuffer1;
+			*(DpBBaseAddr) = FrameBuffer2;
+			*(Ready) = 1;
+			*(Ready) = 0;
+			*(TFT) = FrameBuffer2;
+			x++;
+			for(y=0;y<1024;y++){
+				*(FrameBuffer4+y+1024*x) = 0xFF00000F;
+			}
+			*(FrBBaseAddr) = FrameBuffer5;
+			*(DrBBaseAddr) = FrameBuffer4;
+			*(DpBBaseAddr) = FrameBuffer3;
+			*(Ready) = 1;
+			*(Ready) = 0;
+			*(TFT) = FrameBuffer3;
+		}
+	}
+ */
+
+/*
+ /*
+ * test.c
+ *
+ *  Created on: 2015-02-09
+ *      Author: Amanjit
+ *
+
+#include <stdio.h>
+#include "platform.h"
+#include "xtft.h"
+
+/************************** Constant Definitions ****************************
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+volatile unsigned int * FrameBuffer0 = (unsigned int *)0x80000000;
+volatile unsigned int * FrameBuffer1 = (unsigned int *)(0x80000000+0x800000);
+volatile unsigned int * FrameBuffer2 = (unsigned int *)(0x80000000+0x1000000);
+volatile unsigned int * FrameBuffer3 = (unsigned int *)(0x80000000+0x1800000);
+volatile unsigned int * FrameBuffer4 = (unsigned int *)(0x80000000+0x200000);
+volatile unsigned int * FrameBuffer5 = (unsigned int *)(0x80000000+0x2800000);
+volatile unsigned int * FrameBuffer6 = (unsigned int *)(0x80000000+0x3000000);
+volatile unsigned int * FrameBuffer7 = (unsigned int *)(0x80000000+0x3800000);
+volatile unsigned int * FrameBuffer8 = (unsigned int *)(0x80000000+0x4000000);
+
+volatile unsigned int * FrBBaseAddr = (unsigned int *)0x44A00000;
+volatile unsigned int * DrBBaseAddr = (unsigned int *)0x44A00004;
+volatile unsigned int * DpBBaseAddr = (unsigned int *)0x44A00008;
+volatile unsigned int * Ready = 	  (unsigned int *)0x44A0000C;
+volatile unsigned int * Done = 		  (unsigned int *)0x44A00010;
+
+volatile unsigned int * TFT = (unsigned int *)0x44A10000;
+
+static XTft TftInstance;
+
+int main()
+{
+	init_platform();
+
+	// Initialize TFT
+	XTft_Config *tft = XTft_LookupConfig(0);
+	int status = XTft_CfgInitialize(&TftInstance, tft, tft->BaseAddress);
+
+	FillBuffer(FrameBuffer0,0x00FFF000);
+	FillBuffer(FrameBuffer1,0x0000FF00);
+	FillBuffer(FrameBuffer2,0x00000000);
+	FillBuffer(FrameBuffer3,0x00000000);
+	FillBuffer(FrameBuffer4,0x00000FFF);
+	FillBuffer(FrameBuffer5,0x00000FFF);
+	FillBuffer(FrameBuffer6,0x00F0000F);
+	FillBuffer(FrameBuffer7,0x00000000);
+	FillBuffer(FrameBuffer8,0x00000FFF);
+
+//	*Ready = 0;
+	Display(FrameBuffer8);
+	int x = 0;
+	while(1){
+		PushLine(FrameBuffer2,x,0xFFFF0000);
+		RunComposition(FrameBuffer0,FrameBuffer2,FrameBuffer4);
+		Display(FrameBuffer8);
+
+		PushLine(FrameBuffer3,x,0xFFFF0000);
+		RunComposition(FrameBuffer1,FrameBuffer3,FrameBuffer5);
+		Display(FrameBuffer4);
+
+		PushLine(FrameBuffer7,x,0xFFFF0000);
+		RunComposition(FrameBuffer6,FrameBuffer7,FrameBuffer8);
+		Display(FrameBuffer5);
+		x++;
+
+	}
+
+
+	return 0;
+}
+
+// Sleep for a number of processor cycles
+void sleep(int cycles){
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+void FillBuffer(unsigned int * buffer, int colour){
+	int i;
+	for(i=0;i<(1<<21); i++)
+		*(buffer+i)=colour;
+}
+void Display(unsigned int *buffer){
+	*(TFT)=buffer;
+}
+void PushLine(unsigned int *buffer, int line, int colour){
+	int i;
+	for(i=0;i<1024*10;i++)
+		*(buffer+i+line*1024*10)=colour;
+}
+void RunComposition(unsigned int *Fr, unsigned int *Dr, unsigned int *Dp){
+	*FrBBaseAddr = Fr;
+	*DrBBaseAddr = Dr;
+	*DpBBaseAddr = Dp;
+	*Ready = 0;
+	*Ready = 1;
+}
+ */

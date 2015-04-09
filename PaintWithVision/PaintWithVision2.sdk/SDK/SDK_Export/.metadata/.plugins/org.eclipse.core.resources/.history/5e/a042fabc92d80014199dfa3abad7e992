@@ -1,0 +1,114 @@
+/******************************************************************
+ *   GENERAL STUFF
+ ******************************************************************/
+// Resolution
+#define DISPLAY_COLUMNS  640
+#define DISPLAY_ROWS     480
+
+// Frame Buffers
+volatile unsigned int * FrameBuffer		= (unsigned int *)0x80000000;
+volatile unsigned int * DrawBuffer 		= (unsigned int *)0x80200000;
+volatile unsigned int * DisplayBuffer	= (unsigned int *)0x80400000;
+
+// Sleep for a number of processor cycles
+void sleep(int cycles)
+{
+	int i;
+	for(i=0;i<cycles;i++)
+		asm("nop");
+}
+
+
+
+
+/******************************************************************
+ *   DISPLAY
+ ******************************************************************/
+// Display
+volatile unsigned int * TFT = (unsigned int *)0x44A00000;
+
+void Display(unsigned int *buffer)
+{
+	*(TFT)=buffer;
+}
+
+// Fill entire 2MB of buffer with colour
+void FillBuffer(unsigned int * buffer, int colour)
+{
+	int i;
+	for(i=0;i<(1<<21); i++)
+		*(buffer+i)=colour;
+}
+
+
+
+
+
+/******************************************************************
+ *    COMPOSITOR
+ ******************************************************************/
+// Addresses
+volatile unsigned int * COMP_FRAM_BASE 	= (unsigned int *)0x44A20000;
+volatile unsigned int * COMP_DRAW_BASE 	= (unsigned int *)0x44A20004;
+volatile unsigned int * COMP_DISP_BASE 	= (unsigned int *)0x44A20008;
+volatile unsigned int * COMP_READY 		= (unsigned int *)0x44A2000C;
+volatile unsigned int * COMP_DONE 		= (unsigned int *)0x44A20010;
+volatile unsigned int * COMP_THRESHOLD	= (unsigned int *)0x44A20014;
+volatile unsigned int * COMP_XPOS		= (unsigned int *)0x44A20018;
+volatile unsigned int * COMP_YPOS		= (unsigned int *)0x44A2001C;
+
+// Signal the compositor to start and wait for it to finish
+void CompositorRun(volatile unsigned int *Fr, volatile unsigned int *Dr, volatile unsigned int *Dp, unsigned int threshold)
+{
+	// Set the frame, drawing, display buffers
+	*COMP_FRAM_BASE = (unsigned int)Fr;
+	*COMP_DRAW_BASE = (unsigned int)Dr;
+	*COMP_DISP_BASE = (unsigned int)Dp;
+	*COMP_THRESHOLD = threshold;
+
+	*COMP_READY = 1;
+	*COMP_READY = 0;
+	// Wait for finish, otherwise we will see jitter on screen
+	// if it is still writing
+	while(*COMP_DONE==0);
+}
+unsigned int CompositorGetXPos()
+{
+	return *(COMP_XPOS);
+}
+unsigned int CompositorGetYPos()
+{
+	return *(COMP_YPOS);
+}
+
+
+/******************************************************************
+ *    CAMERA VDMA
+ ******************************************************************/
+// Camera VDMA
+volatile unsigned int * VDMA_BS = (unsigned int *)0x44A10000;
+volatile unsigned int * VDMA_CR = (unsigned int *)0x44A10030;
+volatile unsigned int * VDMA_SR = (unsigned int *)0x44A10034;
+volatile unsigned int * VDMA_AD = (unsigned int *)0x44A100AC;
+volatile unsigned int * VDMA_ST = (unsigned int *)0x44A100A8;
+volatile unsigned int * VDMA_HS = (unsigned int *)0x44A100A4;
+volatile unsigned int * VDMA_VS = (unsigned int *)0x44A100A0;
+
+void VDMAInit(unsigned int * buffer)
+{
+	*(VDMA_AD) = buffer;
+	*(VDMA_ST) = 4096;
+	*(VDMA_HS) = 4*DISPLAY_COLUMNS;
+}
+void VDMAStart()
+{
+	*(VDMA_CR) = 0x1;
+	*(VDMA_VS) = DISPLAY_ROWS;
+}
+void VDMAStop()
+{
+	*(VDMA_CR) = 0x0;
+	// Wait for status bit0 (halt) to be 1;
+	while(((*VDMA_SR)&0x1)==0);
+}
+

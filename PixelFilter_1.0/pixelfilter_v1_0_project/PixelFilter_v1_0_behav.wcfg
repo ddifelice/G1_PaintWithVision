@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="PixelFilter_v1_0_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="PixelFilter_v1_0" />
+            <top_module name="glbl" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <WVObjectSize size="16" />
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/data" type="array">
+      <obj_property name="ElementShortName">data[31:0]</obj_property>
+      <obj_property name="ObjectShortName">data[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/valid" type="logic">
+      <obj_property name="ElementShortName">valid</obj_property>
+      <obj_property name="ObjectShortName">valid</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/user" type="logic">
+      <obj_property name="ElementShortName">user</obj_property>
+      <obj_property name="ObjectShortName">user</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/S_AXI_ACLK" type="logic">
+      <obj_property name="ElementShortName">S_AXI_ACLK</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_ACLK</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/S_AXI_ARESETN" type="logic">
+      <obj_property name="ElementShortName">S_AXI_ARESETN</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_ARESETN</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/slv_reg0" type="array">
+      <obj_property name="ElementShortName">slv_reg0[31:0]</obj_property>
+      <obj_property name="ObjectShortName">slv_reg0[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/slv_reg1" type="array">
+      <obj_property name="ElementShortName">slv_reg1[31:0]</obj_property>
+      <obj_property name="ObjectShortName">slv_reg1[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/slv_reg2" type="array">
+      <obj_property name="ElementShortName">slv_reg2[31:0]</obj_property>
+      <obj_property name="ObjectShortName">slv_reg2[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/slv_reg3" type="array">
+      <obj_property name="ElementShortName">slv_reg3[31:0]</obj_property>
+      <obj_property name="ObjectShortName">slv_reg3[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/x" type="array">
+      <obj_property name="ElementShortName">x[10:0]</obj_property>
+      <obj_property name="ObjectShortName">x[10:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/y" type="array">
+      <obj_property name="ElementShortName">y[10:0]</obj_property>
+      <obj_property name="ObjectShortName">y[10:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/x_total" type="array">
+      <obj_property name="ElementShortName">x_total[31:0]</obj_property>
+      <obj_property name="ObjectShortName">x_total[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/y_total" type="array">
+      <obj_property name="ElementShortName">y_total[31:0]</obj_property>
+      <obj_property name="ObjectShortName">y_total[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/counter" type="array">
+      <obj_property name="ElementShortName">counter[31:0]</obj_property>
+      <obj_property name="ObjectShortName">counter[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/within_threshold" type="logic">
+      <obj_property name="ElementShortName">within_threshold</obj_property>
+      <obj_property name="ObjectShortName">within_threshold</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/PixelFilter_v1_0/PixelFilter_v1_0_S00_AXI_inst/curstate" type="array">
+      <obj_property name="ElementShortName">curstate[1:0]</obj_property>
+      <obj_property name="ObjectShortName">curstate[1:0]</obj_property>
+   </wvobject>
+</wave_config>
