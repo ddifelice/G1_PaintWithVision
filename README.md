@@ -1,4 +1,4 @@
-# G01_PaintWithVision
+# G1_PaintWithVision
 
 This project uses computer vision to recreate several features of the program paint to draw onto a monitor display. Instead of looking for a particular colour, this design looks for a light source and draws onto the display according to the colour of the light. The size of the paintbrush changes depending on the distance of the light from the camera.
 
